@@ -294,8 +294,8 @@
                                   }
                                   dispatch_group_leave(group);
                           }];
-						  NSString *base64Image = [self getBase64Image:originalPicturePath];
-							CGImageRelease(resultFinalImage);
+
+
                          dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
                                 NSMutableArray *params = [[NSMutableArray alloc] init];
                                 if (photosAlbumError) {
@@ -307,7 +307,10 @@
                                         [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
                                 } else {
                                         // Success returns two elements in the returned array
-                                        [params addObject:base64Image];
+										CGImageRelease(originalPicturePath);
+										CGImageRelease(previewPicturePath);
+                                        [params addObject:originalPicturePath];
+                                        [params addObject:previewPicturePath];
                                 }
 
                                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
