@@ -283,7 +283,7 @@
 
             // Save image.
             UIImage *finalUImage = [[UIImage alloc] initWithCGImage:previewImage];
-            [UIImageJPEGRepresentation(finalUImage,1) writeToFile:filePath atomically:YES];
+            [UIImageJPEGRepresentation(finalUImage,1) writeToFile:filePath atomically:NO];
                          ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
 
                          dispatch_group_t group = dispatch_group_create();
