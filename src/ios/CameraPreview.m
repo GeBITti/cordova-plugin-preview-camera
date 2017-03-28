@@ -187,77 +187,134 @@
 - (void) invokeTakePicture {
         [self invokeTakePicture:0.0 withHeight:0.0];
 }
-
 - (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight {
-    AVCaptureConnection *connection = [self.sessionManager.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
-    [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
+        AVCaptureConnection *connection = [self.sessionManager.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
+        [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
 
-      NSLog(@"Done creating still image");
+                 NSLog(@"Done creating still image");
 
-      if (error) {
-        NSLog(@"%@", error);
-      } else {
-        NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
-        UIImage *capturedImage  = [[UIImage alloc] initWithData:imageData];
+                 if (error) {
+                         NSLog(@"%@", error);
+                 } else {
+                         [self.cameraRenderController.renderLock lock];
+                         CIImage *previewCImage = self.cameraRenderController.latestFrame;
+                         CGImageRef previewImage = [self.cameraRenderController.ciContext createCGImage:previewCImage fromRect:previewCImage.extent];
+                         [self.cameraRenderController.renderLock unlock];
 
-        CIImage *capturedCImage;
-        //image resize
+                         NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
+                         UIImage *capturedImage  = [[UIImage alloc] initWithData:imageData];
 
-        if(width > 0 && height > 0){
-          CGFloat scaleHeight = width/capturedImage.size.height;
-          CGFloat scaleWidth = height/capturedImage.size.width;
-          CGFloat scale = scaleHeight > scaleWidth ? scaleWidth : scaleHeight;
+                         CIImage *capturedCImage;
+                         //image resize
 
-          CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
-          [resizeFilter setValue:[[CIImage alloc] initWithCGImage:[capturedImage CGImage]] forKey:kCIInputImageKey];
-          [resizeFilter setValue:[NSNumber numberWithFloat:1.0f] forKey:@"inputAspectRatio"];
-          [resizeFilter setValue:[NSNumber numberWithFloat:scale] forKey:@"inputScale"];
-          capturedCImage = [resizeFilter outputImage];
-        }else{
-          capturedCImage = [[CIImage alloc] initWithCGImage:[capturedImage CGImage]];
-        }
+                         if(maxWidth > 0 && maxHeight > 0) {
+                                 CGFloat scaleHeight = maxWidth/capturedImage.size.height;
+                                 CGFloat scaleWidth = maxHeight/capturedImage.size.width;
+                                 CGFloat scale = scaleHeight > scaleWidth ? scaleWidth : scaleHeight;
 
-        CIImage *imageToFilter;
-        CIImage *finalCImage;
+                                 CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
+                                 [resizeFilter setValue:[[CIImage alloc] initWithCGImage:[capturedImage CGImage]] forKey:kCIInputImageKey];
+                                 [resizeFilter setValue:[NSNumber numberWithFloat:1.0f] forKey:@"inputAspectRatio"];
+                                 [resizeFilter setValue:[NSNumber numberWithFloat:scale] forKey:@"inputScale"];
+                                 capturedCImage = [resizeFilter outputImage];
+                         }
+                         else{
+                                 capturedCImage = [[CIImage alloc] initWithCGImage:[capturedImage CGImage]];
+                         }
 
-        //fix front mirroring
-        if (self.sessionManager.defaultCamera == AVCaptureDevicePositionFront) {
-          CGAffineTransform matrix = CGAffineTransformTranslate(CGAffineTransformMakeScale(1, -1), 0, capturedCImage.extent.size.height);
-          imageToFilter = [capturedCImage imageByApplyingTransform:matrix];
-        } else {
-          imageToFilter = capturedCImage;
-        }
+                         CIImage *imageToFilter;
+                         CIImage *finalCImage;
 
-        CIFilter *filter = [self.sessionManager ciFilter];
-        if (filter != nil) {
-          [self.sessionManager.filterLock lock];
-          [filter setValue:imageToFilter forKey:kCIInputImageKey];
-          finalCImage = [filter outputImage];
-          [self.sessionManager.filterLock unlock];
-        } else {
-          finalCImage = imageToFilter;
-        }
+                         //fix front mirroring
+                         if (self.sessionManager.defaultCamera == AVCaptureDevicePositionFront) {
+                                 CGAffineTransform matrix = CGAffineTransformTranslate(CGAffineTransformMakeScale(1, -1), 0, capturedCImage.extent.size.height);
+                                 imageToFilter = [capturedCImage imageByApplyingTransform:matrix];
+                         } else {
+                                 imageToFilter = capturedCImage;
+                         }
 
-        NSMutableArray *params = [[NSMutableArray alloc] init];
+                         CIFilter *filter = [self.sessionManager ciFilter];
+                         if (filter != nil) {
+                                 [self.sessionManager.filterLock lock];
+                                 [filter setValue:imageToFilter forKey:kCIInputImageKey];
+                                 finalCImage = [filter outputImage];
+                                 [self.sessionManager.filterLock unlock];
+                         } else {
+                                 finalCImage = imageToFilter;
+                         }
 
-        CGImageRef finalImage = [self.cameraRenderController.ciContext createCGImage:finalCImage fromRect:finalCImage.extent];
-        UIImage *resultImage = [UIImage imageWithCGImage:finalImage];
+                         CGImageRef finalImage = [self.cameraRenderController.ciContext createCGImage:finalCImage fromRect:finalCImage.extent];
 
-        double radians = [self radiansFromUIImageOrientation:resultImage.imageOrientation];
-        CGImageRef resultFinalImage = [self CGImageRotated:finalImage withRadians:radians];
-        
-        CGImageRelease(finalImage); // release CGImageRef to remove memory leaks
+                         ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
 
-        NSString *base64Image = [self getBase64Image:resultFinalImage withQuality:1];
+                         dispatch_group_t group = dispatch_group_create();
 
-        CGImageRelease(resultFinalImage); // release CGImageRef to remove memory leaks
+                         __block NSString *originalPicturePath;
+                         __block NSString *previewPicturePath;
+                         __block NSError *photosAlbumError;
 
-        [params addObject:base64Image];
+                         ALAssetOrientation orientation;
+                         switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+                         case UIDeviceOrientationPortraitUpsideDown:
+                                 orientation = ALAssetOrientationLeft;
+                                 break;
+                         case UIDeviceOrientationLandscapeLeft:
+                                 orientation = ALAssetOrientationUp;
+                                 break;
+                         case UIDeviceOrientationLandscapeRight:
+                                 orientation = ALAssetOrientationDown;
+                                 break;
+                         case UIDeviceOrientationPortrait:
+                         default:
+                                 orientation = ALAssetOrientationRight;
+                         }
 
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
-        [pluginResult setKeepCallbackAsBool:true];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
-      }
-    }];
+                         // task 1
+                         dispatch_group_enter(group);
+                         /*[library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
+                                  if (error) {
+                                          NSLog(@"FAILED to save Preview picture.");
+                                          photosAlbumError = error;
+                                  } else {
+                                          previewPicturePath = [assetURL absoluteString];
+                                          NSLog(@"previewPicturePath: %@", previewPicturePath);
+                                  }
+                                  dispatch_group_leave(group);
+                          }];*/
+
+                         //task 2
+                         dispatch_group_enter(group);
+                         /*[library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
+                                  if (error) {
+                                          NSLog(@"FAILED to save Original picture.");
+                                          photosAlbumError = error;
+                                  } else {
+                                          originalPicturePath = [assetURL absoluteString];
+                                          NSLog(@"originalPicturePath: %@", originalPicturePath);
+                                  }
+                                  dispatch_group_leave(group);
+                          }];*/
+
+                         dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+                                NSMutableArray *params = [[NSMutableArray alloc] init];
+                                if (photosAlbumError) {
+                                        // Error returns just one element in the returned array
+                                        NSString * remedy = @"";
+                                        if (-3311 == [photosAlbumError code]) {
+                                                remedy = @"Go to Settings > CodeStudio and allow access to Photos";
+                                        }
+                                        [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
+                                } else {
+                                        // Success returns two elements in the returned array
+                                        [params addObject:originalPicturePath];
+                                        [params addObject:previewPicturePath];
+                                }
+
+                                CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
+                                [pluginResult setKeepCallbackAsBool:true];
+                                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
+                        });
+                 }
+         }];
 }
 @end
