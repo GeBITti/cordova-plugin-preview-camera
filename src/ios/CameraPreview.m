@@ -271,7 +271,7 @@
 
                          // task 1
                          dispatch_group_enter(group);
-                         /*[library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
+                         [library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
                                   if (error) {
                                           NSLog(@"FAILED to save Preview picture.");
                                           photosAlbumError = error;
@@ -280,7 +280,7 @@
                                           NSLog(@"previewPicturePath: %@", previewPicturePath);
                                   }
                                   dispatch_group_leave(group);
-                          }];*/
+                          }];
 
                          //task 2
                          dispatch_group_enter(group);
@@ -295,7 +295,6 @@
                                   dispatch_group_leave(group);
                           }];
 
-
                          dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
                                 NSMutableArray *params = [[NSMutableArray alloc] init];
                                 if (photosAlbumError) {
@@ -307,8 +306,8 @@
                                         [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
                                 } else {
                                         // Success returns two elements in the returned array
-										CGImageRelease(originalPicturePath);
-										CGImageRelease(previewPicturePath);
+										NSString *base64Image = [self getBase64Image:originalPicturePath withQuality:quality];
+										[params addObject:base64Image];
                                         [params addObject:originalPicturePath];
                                         [params addObject:previewPicturePath];
                                 }
