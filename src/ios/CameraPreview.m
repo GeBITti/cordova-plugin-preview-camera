@@ -284,7 +284,7 @@
 
                          //task 2
                          dispatch_group_enter(group);
-                         /*[library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
+                         [library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
                                   if (error) {
                                           NSLog(@"FAILED to save Original picture.");
                                           photosAlbumError = error;
@@ -293,8 +293,9 @@
                                           NSLog(@"originalPicturePath: %@", originalPicturePath);
                                   }
                                   dispatch_group_leave(group);
-                          }];*/
-
+                          }];
+						  NSString *base64Image = [self getBase64Image:originalPicturePath];
+							CGImageRelease(resultFinalImage);
                          dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
                                 NSMutableArray *params = [[NSMutableArray alloc] init];
                                 if (photosAlbumError) {
@@ -306,8 +307,7 @@
                                         [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
                                 } else {
                                         // Success returns two elements in the returned array
-                                        [params addObject:originalPicturePath];
-                                        [params addObject:previewPicturePath];
+                                        [params addObject:base64Image];
                                 }
 
                                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
