@@ -309,6 +309,7 @@
 					//NSString *base64Image = [self getBase64Image:originalPicturePath withQuality:quality];
 					//[params addObject:base64Image];
                                         [params addObject:originalPicturePath];
+					[params addObject:originalPicturePath];
                                         //[params addObject:previewPicturePath];
                                 }
 
