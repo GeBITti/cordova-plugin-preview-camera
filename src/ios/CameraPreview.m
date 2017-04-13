@@ -270,7 +270,7 @@
                          }
 
                          // task 1
-                         /*dispatch_group_enter(group);
+                         dispatch_group_enter(group);
                          [library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
                                   if (error) {
                                           NSLog(@"FAILED to save Preview picture.");
@@ -280,11 +280,10 @@
                                           NSLog(@"previewPicturePath: %@", previewPicturePath);
                                   }
                                   dispatch_group_leave(group);
-
-                          }];*/
+                          }];
 
                          //task 2
-                         /*dispatch_group_enter(group);
+                         dispatch_group_enter(group);
                          [library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
                                   if (error) {
                                           NSLog(@"FAILED to save Original picture.");
@@ -294,7 +293,7 @@
                                           NSLog(@"originalPicturePath: %@", originalPicturePath);
                                   }
                                   dispatch_group_leave(group);
-                          }];*/
+                          }];
 
                          dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
                                 NSMutableArray *params = [[NSMutableArray alloc] init];
@@ -307,10 +306,7 @@
                                         [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
                                 } else {
                                         // Success returns two elements in the returned array
-
-
-                                        //[params addObject:originalPicturePath];
-                                        [params addObject:previewPicturePath];
+                                        [params addObject:originalPicturePath];
                                         [params addObject:previewPicturePath];
                                 }
 
