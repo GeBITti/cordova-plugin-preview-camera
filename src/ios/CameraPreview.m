@@ -270,7 +270,7 @@
                          }
 
                          // task 1
-                         dispatch_group_enter(group);
+                         /*dispatch_group_enter(group);
                          [library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
                                   if (error) {
                                           NSLog(@"FAILED to save Preview picture.");
@@ -281,7 +281,7 @@
                                   }
                                   dispatch_group_leave(group);
 
-                          }];
+                          }];*/
 
                          //task 2
                          dispatch_group_enter(group);
@@ -311,7 +311,7 @@
 
                                         [params addObject:originalPicturePath];
 
-                                        [params addObject:previewPicturePath];
+                                        [params addObject:originalPicturePath];
                                 }
 
                                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
